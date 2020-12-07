@@ -1,11 +1,6 @@
 import sys
 import re
 
-verbose = True
-def printv(*args, **kwargs):
-    if verbose:
-        print(*args, **kwargs)
-
 def load_input(f):
     l = []
     with open(f, 'r') as fd:

@@ -1,11 +1,6 @@
 import sys
 import re
 
-verbose = True
-def printv(*args, **kwargs):
-    if verbose:
-        print(*args, **kwargs)
-
 class Passport():
     def __init__(self, sbuf):
         """parse key/val pairs from string buffer"""

@@ -21,7 +21,7 @@ def part1(f):
         elif tot > goal:
             bb -= 1
         elif tot == goal:
-            print(ls[ff], ls[bb])
+            print('Found', ls[ff], ls[bb])
             print('prod:', ls[ff] * ls[bb])
             return True
     print("Not found")
@@ -46,7 +46,6 @@ def part2(f):
 
         subtot = l[mh] + l[mm]
         tot = subtot + l[ml]
-        print(mh, mm, ml, s, tot, subtot)
 
         if l[mh] > goal:
             # prune l1 branch
