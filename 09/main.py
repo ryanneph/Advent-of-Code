@@ -1,6 +1,4 @@
 import sys
-import re
-import functools
 
 verbose = False
 def printv(*args, **kwargs):

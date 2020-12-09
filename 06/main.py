@@ -1,5 +1,4 @@
 import sys
-import re
 
 def load_input(f):
     l = []
