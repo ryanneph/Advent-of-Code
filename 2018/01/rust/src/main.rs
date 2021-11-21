@@ -7,7 +7,7 @@ fn main() {
 }
 
 fn part1() {
-    let contents = fs::read_to_string("./input.txt")
+    let contents = fs::read_to_string("../input.txt")
         .expect("Failed to read the file");
 
     let mut accumulator : i32 = 0;
@@ -31,7 +31,7 @@ fn part1() {
 }
 
 fn part2() {
-    let contents = fs::read_to_string("./input.txt")
+    let contents = fs::read_to_string("../input.txt")
         .expect("Failed to read the file");
 
     let mut accumulator : i32 = 0;
