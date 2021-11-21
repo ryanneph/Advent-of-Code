@@ -1,6 +1,6 @@
-# Advent of Code 2020
+# Advent of Code
 
-I'm participating in AoC 2020 because I enjoy solving these types of short challenges as a break from daily work on large systems.
+I'm participating in AoC because I enjoy solving these types of short challenges as a break from daily work on large systems.
 
 If you haven't heard of AoC, [check it out](https://adventofcode.com/2020/) and follow along yourself!
 
