@@ -1,54 +1,11 @@
+// Compile with "jai -import_dir '<AoC-repo-dir>/jai-common' main.jai"
+
 #import "Basic";
-#import "File";
 #import "Hash_Table";
 
-file_read_all_as_string :: (filename: string) -> (string, bool) {
-   file, success := file_open(filename, for_writing=false, keep_existing_content=true);
-   if !success {
-      log("Failed to open file '%' for reading", filename);
-      return "", false;
-   }
-   
-   length := file_length(file);
-   buffer := cast(*u8) alloc(length);
-   success = file_read(file, buffer, length);
-   if !success {
-      log("Failed to read data from file '%'", filename);
-      return "", false;
-   }
-
-   file_close(*file);
-   
-   // create a string to hold the contents
-   data: string;
-   data.data = buffer;
-   data.count = length;
-
-   return data, true;
-}
-
-string_next_line :: (str: string) -> (string, string) {
-   if (!str.count) return ("", "");
-
-   // split on the first '\n' and discard the '\n'
-   len := 0;
-   while (len < str.count && str[len] != #char "\n")  len += 1;
-
-   line: string;
-   line.data = str.data;
-   line.count = len;
-
-   out_string: string;
-   if (len == str.count && str[len - 1] != #char "\n") {
-      out_string.data = null;
-      out_string.count = 0;
-   } else {
-      out_string.data = str.data + len + 1;
-      out_string.count = str.count - len - 1;
-   }
-   
-   return (line, out_string);
-}
+// personal modules
+#import "file";
+#import "string";
 
 part1 :: (contents: string) {
    accumulator: s64 = 0;
