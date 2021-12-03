@@ -1,3 +1,6 @@
 # jai build directory and binary
 .build 
 main
+
+# rust builds
+target/
