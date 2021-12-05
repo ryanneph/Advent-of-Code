@@ -11,44 +11,7 @@ struct Board {
     cells: [BoardCell; 25],
 }
 
-fn board_set_cell_number(board: &mut Board, row: usize, column: usize, number: u8) {
-    let cell_index = (row * 5 + column) as usize;
-    board.cells[cell_index].number = number;
-}
-
-fn board_mark_cell(board: &mut Board, row: usize, column: usize) {
-    let cell_index = (row * 5 + column) as usize;
-    board.cells[cell_index].marked = true;
-}
-
-fn board_find_number(board: &Board, number: u8) -> (bool, usize, usize) {
-    for row in 0..5 {
-        for col in 0..5 {
-            let cell = &board.cells[row * 5 + col];
-            if cell.number == number {
-                return (true, row, col);
-            }
-        }
-    }
-
-    return (false, 0, 0);
-}
-
-fn parse_lines_to_board<'a>(lines: &mut std::iter::Peekable<std::str::Lines>) -> Board {
-    let mut board = Board::default();
-
-    for row in 0..5 {
-        let line = lines.next().unwrap();
-        for (col, number_string) in line.split_whitespace().enumerate() {
-            let number: u8 = number_string.parse().unwrap();
-            board_set_cell_number(&mut board, row, col, number);
-        }
-    }
-    lines.next(); // skip empty line
-
-    return board;
-}
-
+// FOR DEBUG USE
 #[allow(dead_code)]
 fn board_print_numbers(board: &Board) {
     for row in 0..5 {
@@ -63,6 +26,16 @@ fn board_print_numbers(board: &Board) {
         print!("\n");
     }
     print!("\n");
+}
+
+fn board_mark_number(board: &mut Board, number: u8) -> bool {
+    for cell in &mut board.cells {
+        if cell.number == number {
+            cell.marked = true;
+            return true;
+        }
+    }
+    return false;
 }
 
 fn board_check_winning(board: &Board) -> bool {
@@ -101,6 +74,13 @@ fn board_check_winning(board: &Board) -> bool {
     return false;
 }
 
+fn board_mark_and_check_winning(board: &mut Board, number: u8) -> bool {
+    if board_mark_number(board, number) {
+        return board_check_winning(&board);
+    }
+    return false;
+}
+
 fn board_sum_unmarked(board: &Board) -> u32 {
     let mut sum: u32 = 0;
     for cell in &board.cells {
@@ -111,18 +91,22 @@ fn board_sum_unmarked(board: &Board) -> u32 {
     return sum;
 }
 
-fn part1(contents: &String) {
-    let mut lines = contents.lines().peekable();
+fn parse_lines_to_board<'a>(lines: &mut std::iter::Peekable<std::str::Lines>) -> Board {
+    let mut board = Board::default();
 
-    // parse the first line
-    let mut numbers = Vec::<u8>::new();
-    let first_line = lines.next().unwrap();
-    lines.next(); // skip empty line
-    for number_string in first_line.split(",") {
-        numbers.push(number_string.parse().unwrap());
+    for row in 0..5 {
+        let line = lines.next().unwrap();
+        for (col, number_string) in line.split_whitespace().enumerate() {
+            let number: u8 = number_string.parse().unwrap();
+            board.cells[row * 5 + col].number = number;
+        }
     }
+    lines.next(); // skip empty line
 
-    // parse the boards
+    return board;
+}
+
+fn parse_lines_to_boards<'a>(mut lines: &mut std::iter::Peekable<std::str::Lines>) -> Vec<Board> {
     let mut boards = Vec::<Board>::new();
     let mut next_line = lines.peek();
     while next_line.is_some() {
@@ -130,45 +114,56 @@ fn part1(contents: &String) {
         next_line = lines.peek();
     }
 
-    // println!("Read in {} boards", boards.len());
-    // for board in &boards {
-    //     board_print_numbers(&board);
-    // }
+    return boards;
+}
 
-    let mut current_number: u8 = 0;
-    let mut found_winner = false;
-    let mut winning_board = Board::default();
-    for number in numbers {
-        if found_winner {
-            break;
-        }
-        current_number = number;
+fn parse_line_to_numbers<'a>(lines: &mut std::iter::Peekable<std::str::Lines>) -> Vec<u8> {
+    let mut numbers = Vec::<u8>::new();
+    let first_line = lines.next().unwrap();
+    for number_string in first_line.split(",") {
+        numbers.push(number_string.parse().unwrap());
+    }
 
+    return numbers;
+}
+
+fn part1(numbers: &Vec<u8>, mut boards: Vec<Board>) {
+    let mut first_winning_board_score = 0;
+    'number_loop: for number in numbers {
         for mut board in &mut boards {
-            if found_winner {
-                break;
-            }
-
-            let (found, row, col) = board_find_number(&board, number);
-            if found {
-                board_mark_cell(&mut board, row, col);
-                if board_check_winning(&board) {
-                    winning_board = *board;
-                    found_winner = true;
-                }
+            let winning = board_mark_and_check_winning(&mut board, *number);
+            if winning {
+                first_winning_board_score = board_sum_unmarked(board) * *number as u32;
+                break 'number_loop;
             }
         }
     }
 
-    assert!(found_winner);
-    // board_print_numbers(&winning_board);
-    let sum = board_sum_unmarked(&winning_board);
-
-    println!("PART1: {}", sum * current_number as u32);
+    println!("PART1: {}", first_winning_board_score);
 }
 
-fn part2(contents: &String) {
-    println!("PART2: {}", 0);
+fn part2(numbers: &Vec<u8>, mut boards: Vec<Board>) {
+    let mut last_winning_board_score: u32 = 0;
+    'number_loop: for number in numbers {
+        let mut board_index = 0;
+        while board_index < boards.len() {
+            let remaining_boards_count = boards.len();
+
+            let mut board = &mut boards[board_index];
+            if board_mark_and_check_winning(&mut board, *number) {
+                if remaining_boards_count == 1 {
+                    last_winning_board_score = board_sum_unmarked(&board) * *number as u32;
+                    break 'number_loop;
+                } else {
+                    boards.swap_remove(board_index);
+                    continue; // without incrementing board_index
+                }
+            }
+            board_index += 1;
+        }
+
+    }
+    println!("PART2: {}", last_winning_board_score);
 }
 
 fn main() {
@@ -177,6 +172,16 @@ fn main() {
     let contents = fs::read_to_string(filename)
         .expect("Failed to read the file");
 
-    part1(&contents);
-    part2(&contents);
+    let mut lines = contents.lines().peekable();
+
+    // parse the first line
+    let numbers: Vec<u8> = parse_line_to_numbers(&mut lines);
+    lines.next(); // skip empty line
+
+    // parse remainder of file
+    let boards: Vec<Board> = parse_lines_to_boards(&mut lines);
+    let boards_copy = boards.clone();
+
+    part1(&numbers, boards);
+    part2(&numbers, boards_copy);
 }
