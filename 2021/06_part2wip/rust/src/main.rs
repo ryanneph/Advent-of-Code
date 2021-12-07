@@ -27,16 +27,29 @@ fn part1(mut counters: Vec<i8>) {
 }
 
 fn part2(mut counters: Vec<i8>) {
+    // computationally infeasible to solve algorithmically,
+    // so we just use the mathematical representation to
+    // obtain an analytical solution.
+    // Each fish in the initial condition may be independently modeled
+    // and their progeny summed.
+    // First each must be "reset" to the start of it's lifecycle, then
+    // the remaining number of days _for it_ is used in the model
+
+    let days_total: u32 = 18;
+    let mut total: u64 = 0;
     for count in counters {
-        println!("{}", count);
+        let days_remaining = days_total - count as u32 - 1;
+        let progeny_count = u64::pow(2, days_remaining / 7) +
+                            u64::pow(2, (days_remaining) / 9);
+        total += progeny_count;
     }
 
-    println!("PART2: {}", 0);
+    println!("PART2 (WORK-IN-PROGRESS): fish after 256 days: {}", total);
 }
 
 fn main() {
-    let filename = "../input.txt";
-    // let filename = "../test1.txt";
+    // let filename = "../input.txt";
+    let filename = "../test1.txt";
     let contents = fs::read_to_string(filename)
         .expect("Failed to read the file");
 
@@ -47,5 +60,5 @@ fn main() {
         .collect();
 
     part1(counters.clone());
-    // part2(counters);
+    part2(counters);
 }
