@@ -18,6 +18,7 @@ fn part2(contents: &String) {
 
 fn main() {
     let filename = "../input.txt";
+    // let filename = "../test1.txt";
     let contents = fs::read_to_string(filename)
         .expect("Failed to read the file");
 
