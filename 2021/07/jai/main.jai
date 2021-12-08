@@ -24,6 +24,7 @@ find_best_position :: (positions: []int, cost_proc: (position: int, alignment: i
       cost := 0;
       for position: positions {
          cost += cost_proc(position, i);
+         if cost > min_cost break;
       }
       if (cost < min_cost) {
          min_cost = cost;
