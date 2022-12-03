@@ -1,20 +1,20 @@
 // Compile with "jai -import_dir '<AoC-repo-dir>/jai-common' main.jai"
 
 #import "Basic";
-#import "String";
 
 // from ../../../jai-common
 #import "file";
 #import "string";
 
-part_all :: (contents: string) {
-
+part_1 :: (contents: File_Contents) {
+    for line: contents {
+        print("LINE %: %\n", it_index, line);
+    }
 }
 
 main :: () {
     filename := "../test1.txt";
-    file_contents, success := file_read_all_as_string(filename);
-    assert(success);
+    file_contents := file_read_all(filename);
 
-    part_all(file_contents);
+    part_1(file_contents);
 }
