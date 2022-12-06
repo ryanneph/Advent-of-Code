@@ -29,51 +29,41 @@ table_remove_or_decrement :: (table: *Table($K, $V), key: K, val: V) -> s8 {
     }
 }
 
-part_1 :: (contents: string) {
-    print("datastream: %\n", contents);
-    header_table: Table(u8, s8);
+part_all :: (contents: string) {
+    header_table:  Table(u8, s8);
+    message_table: Table(u8, s8);
+    first_header_index  := -1;
+    first_message_index := -1;
     for i: 0..contents.count-1 {
-        if i >= 4  table_remove_or_decrement(*header_table, contents[i - 4], 1);
-        table_insert_or_increment(*header_table, contents[i], 1);
-
-        // DEBUG
-        print("TABLE(%; +", i+1);
-        print_character(contents[i]);
-        if (i >= 4) {
-            print(", -");
-            print_character(contents[i-4]);
+        if (first_header_index < 0) {
+            if i >= 4  table_remove_or_decrement(*header_table, contents[i - 4], 1);
+            table_insert_or_increment(*header_table, contents[i], 1);
         }
-        print("): ");
 
-        for val, key: header_table {
-            print_character(key);
-            print(":%, ", val);
+        if (first_message_index < 0) {
+            if i >= 14 table_remove_or_decrement(*message_table, contents[i - 14], 1);
+            table_insert_or_increment(*message_table, contents[i], 1);
         }
-        print("]\n");
 
-        if header_table.count == 4 {
-            print("FOUND IT: %\n", i + 1);
+        if first_header_index < 0 && header_table.count == 4 {
+            first_header_index = i + 1;
+        }
+
+        if first_message_index < 0 && message_table.count == 14 {
+            first_message_index = i + 1;
+        }
+
+        if first_header_index >= 0 && first_message_index >= 0
             break;
-        }
-        // if (i >= 4) {
-        //     unique := true;
-        //     for val, key: header_table {
-        //         if val > 1 {
-        //             unique = false;
-        //             break;
-        //         }
-        //     }
-        //     if (unique) {
-        //         print("FOUND IT: %\n", i + 1);
-        //         break;
-        //     }
-        // }
     }
+
+    print("part1: %\n", first_header_index);
+    print("part2: %\n", first_message_index);
 }
 
 main :: () {
     filename := "../input.txt";
     file_contents := file_read_all_as_string(filename);
 
-    part_1(file_contents);
+    part_all(file_contents);
 }
