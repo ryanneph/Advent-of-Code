@@ -7,24 +7,21 @@
 #import "file";
 #import "string";
 
-Stack :: struct ($T: Type) {
-    crates: [..]T;
-}
+Crate : Type : u8;
+Stack : Type : [..]Crate;
 
-deep_copy :: (stacks: []Stack($T)) -> [..]Stack(T) {
-    stacks_copy: [..]Stack(u8);
+deep_copy :: (stacks: []Stack) -> [..]Stack {
+    stacks_copy: [..]Stack;
+    array_reserve(*stacks_copy, stacks.count);
     for stack: stacks {
-        new_stack: Stack(T);
-        for crate: stack.crates {
-            array_add(*new_stack.crates, crate);
+        new_stack: Stack;
+        array_reserve(*new_stack, stack.count);
+        for crate: stack {
+            array_add(*new_stack, crate);
         }
         array_add(*stacks_copy, new_stack);
     }
     return stacks_copy;
-}
-
-stack_push :: inline (stack: *Stack($T), val: T) {
-    array_add(*stack.crates, val);
 }
 
 Move :: struct {
@@ -32,16 +29,16 @@ Move :: struct {
 }
 
 // DEBUG
-print_stacks :: (stacks: []Stack(u8)) {
+print_stacks :: (stacks: []Stack) {
     tallest_count := 0;
     for stack: stacks {
-        tallest_count = max(tallest_count, stack.crates.count);
+        tallest_count = max(tallest_count, stack.count);
     }
 
     for i: 0..tallest_count-1 {
-        for *stack: stacks {
-            if stack.crates.count >= tallest_count - i {
-                print_character(stack.crates[tallest_count - 1 - i]);
+        for stack: stacks {
+            if stack.count >= tallest_count - i {
+                print_character(stack[tallest_count - 1 - i]);
             } else {
                 print(" ");
             }
@@ -57,52 +54,52 @@ print_stacks :: (stacks: []Stack(u8)) {
     print("\n");
 }
 
-do_move_one_at_a_time :: (stacks: *[..]Stack(u8), move: Move) {
-    assert((<<stacks)[move.from - 1].crates.count >= move.count);
+do_move_one_at_a_time :: (stacks: *[..]Stack, move: Move) {
+    assert((<<stacks)[move.from - 1].count >= move.count);
     for _: 1..move.count {
-        crate := pop(*(<<stacks)[move.from - 1].crates);
-        array_add(*(<<stacks)[move.to - 1].crates, crate);
+        crate := pop(*(<<stacks)[move.from - 1]);
+        array_add(*(<<stacks)[move.to - 1], crate);
     }
 }
 
-do_move_many_at_a_time :: (stacks: *[..]Stack(u8), move: Move) {
-    assert((<<stacks)[move.from - 1].crates.count >= move.count);
-    temp_crates: [..]u8;
-    for _: 1..move.count {
-        crate := pop(*(<<stacks)[move.from - 1].crates);
-        array_add(*temp_crates, crate);
-    }
-    for <crate: temp_crates
-        array_add(*(<<stacks)[move.to - 1].crates, crate);
-}
-
-part_1 :: (stacks: [..]Stack(u8), moves: []Move) {
+part_1 :: (stacks: [..]Stack, moves: []Move) {
     for move: moves
         do_move_one_at_a_time(*stacks, move);
 
     string_builder: String_Builder;
     for stack: stacks
-        append(*string_builder, stack.crates[stack.crates.count - 1]);
+        append(*string_builder, stack[stack.count - 1]);
 
     print("FINAL STACK ARRANGEMENT:\n");
     print_stacks(stacks);
     print("part1: %\n", builder_to_string(*string_builder));
 }
 
-part_2 :: (stacks: [..]Stack(u8), moves: []Move) {
+do_move_many_at_a_time :: (stacks: *[..]Stack, move: Move) {
+    assert((<<stacks)[move.from - 1].count >= move.count);
+    temp_crates: [..]Crate;
+    for _: 1..move.count {
+        crate := pop(*(<<stacks)[move.from - 1]);
+        array_add(*temp_crates, crate);
+    }
+    for <crate: temp_crates
+        array_add(*(<<stacks)[move.to - 1], crate);
+}
+
+part_2 :: (stacks: [..]Stack, moves: []Move) {
     for move: moves
         do_move_many_at_a_time(*stacks, move);
 
     string_builder: String_Builder;
     for stack: stacks
-        append(*string_builder, stack.crates[stack.crates.count - 1]);
+        append(*string_builder, stack[stack.count - 1]);
 
     print("FINAL STACK ARRANGEMENT:\n");
     print_stacks(stacks);
     print("part2: %\n", builder_to_string(*string_builder));
 }
 
-parse_stacks :: (contents: File_Contents) -> [..]Stack(u8) {
+parse_stacks :: (contents: File_Contents) -> [..]Stack {
     stack_lines: [..]string;
     stack_count := 0;
     for line: contents {
@@ -116,7 +113,7 @@ parse_stacks :: (contents: File_Contents) -> [..]Stack(u8) {
         array_add(*stack_lines, line);
     }
 
-    stacks: [..]Stack(u8);
+    stacks: [..]Stack;
     array_resize(*stacks, stack_count);
 
     // Read row-by-row from the bottom of the stacks, upwards.
@@ -126,7 +123,7 @@ parse_stacks :: (contents: File_Contents) -> [..]Stack(u8) {
         for i: 0..stack_count-1 {
             char_index := 1 + i * 4;
             if char_index < line.count && line[char_index] != #char " "
-                stack_push(*stacks[i], line[char_index]);
+                array_add(*stacks[i], line[char_index]);
         }
     }
 
@@ -166,8 +163,7 @@ main :: () {
     stacks := parse_stacks(file_contents);
     moves := parse_moves(file_contents);
 
-    stacks_copy := deep_copy(stacks);
-    part_1(stacks_copy, moves);
+    part_1(deep_copy(stacks), moves);
 
     print("\n");
     part_2(stacks, moves);
