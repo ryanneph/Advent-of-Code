@@ -11,6 +11,18 @@ Stack :: struct ($T: Type) {
     crates: [..]T;
 }
 
+deep_copy :: (stacks: []Stack($T)) -> [..]Stack(T) {
+    stacks_copy: [..]Stack(u8);
+    for stack: stacks {
+        new_stack: Stack(T);
+        for crate: stack.crates {
+            array_add(*new_stack.crates, crate);
+        }
+        array_add(*stacks_copy, new_stack);
+    }
+    return stacks_copy;
+}
+
 stack_push :: inline (stack: *Stack($T), val: T) {
     array_add(*stack.crates, val);
 }
@@ -38,14 +50,14 @@ print_stacks :: (stacks: []Stack(u8)) {
         print("\n");
     }
     for i: 1..stacks.count
-        print("--", i);
+        print("--");
     print("\n");
     for i: 1..stacks.count
         print("% ", i);
     print("\n");
 }
 
-do_move :: (stacks: *[..]Stack(u8), move: Move) {
+do_move_one_at_a_time :: (stacks: *[..]Stack(u8), move: Move) {
     assert((<<stacks)[move.from - 1].crates.count >= move.count);
     for _: 1..move.count {
         crate := pop(*(<<stacks)[move.from - 1].crates);
@@ -53,9 +65,20 @@ do_move :: (stacks: *[..]Stack(u8), move: Move) {
     }
 }
 
+do_move_many_at_a_time :: (stacks: *[..]Stack(u8), move: Move) {
+    assert((<<stacks)[move.from - 1].crates.count >= move.count);
+    temp_crates: [..]u8;
+    for _: 1..move.count {
+        crate := pop(*(<<stacks)[move.from - 1].crates);
+        array_add(*temp_crates, crate);
+    }
+    for <crate: temp_crates
+        array_add(*(<<stacks)[move.to - 1].crates, crate);
+}
+
 part_1 :: (stacks: [..]Stack(u8), moves: []Move) {
     for move: moves
-        do_move(*stacks, move);
+        do_move_one_at_a_time(*stacks, move);
 
     string_builder: String_Builder;
     for stack: stacks
@@ -64,6 +87,19 @@ part_1 :: (stacks: [..]Stack(u8), moves: []Move) {
     print("FINAL STACK ARRANGEMENT:\n");
     print_stacks(stacks);
     print("part1: %\n", builder_to_string(*string_builder));
+}
+
+part_2 :: (stacks: [..]Stack(u8), moves: []Move) {
+    for move: moves
+        do_move_many_at_a_time(*stacks, move);
+
+    string_builder: String_Builder;
+    for stack: stacks
+        append(*string_builder, stack.crates[stack.crates.count - 1]);
+
+    print("FINAL STACK ARRANGEMENT:\n");
+    print_stacks(stacks);
+    print("part2: %\n", builder_to_string(*string_builder));
 }
 
 parse_stacks :: (contents: File_Contents) -> [..]Stack(u8) {
@@ -129,5 +165,10 @@ main :: () {
 
     stacks := parse_stacks(file_contents);
     moves := parse_moves(file_contents);
-    part_1(stacks, moves);
+
+    stacks_copy := deep_copy(stacks);
+    part_1(stacks_copy, moves);
+
+    print("\n");
+    part_2(stacks, moves);
 }
