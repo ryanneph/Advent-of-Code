@@ -2,6 +2,7 @@
 
 #import "Basic";
 #import "String";
+#import "Sort";
 
 // from ../../../jai-common
 #import "file";
@@ -99,6 +100,7 @@ construct_tree_from_log_string :: (contents: File_Contents) -> (root: *Node) {
     root := make_directory_node("/", null);
     current := root;
 
+    // construct tree
     for line: contents {
         if line[0] == #char "$" {
             found, cmd, args := split_from_left(advance(line, 2), " ");
@@ -131,24 +133,6 @@ construct_tree_from_log_string :: (contents: File_Contents) -> (root: *Node) {
         }
     }
 
-    return root;
-}
-
-print_tree :: (root: *Node) {
-    for :tree_dfs root {
-        for i: 1..it.depth print("  ");
-        print("DIR: % %\n", it.dir.total_size, it.full_path);
-
-        for it.dir.file_children {
-            for i: 1..it.depth print("  ");
-            print("FILE: % %\n", it.file.size, it.file.name);
-        }
-    }
-}
-
-part_1 :: (contents: File_Contents) {
-    root := construct_tree_from_log_string(contents);
-
     // calculate directory sizes
     for :tree_dfs root {
         // calculate size of immediate file children
@@ -166,14 +150,45 @@ part_1 :: (contents: File_Contents) {
         }
     }
 
+    return root;
+}
+
+print_tree :: (root: *Node) {
+    for :tree_dfs root {
+        for i: 1..it.depth print("  ");
+        print("DIR: % %\n", it.dir.total_size, it.full_path);
+
+        for it.dir.file_children {
+            for i: 1..it.depth print("  ");
+            print("FILE: % %\n", it.file.size, it.file.name);
+        }
+    }
+}
+
+part_1 :: (root: *Node) {
     sum := 0;
     for :tree_dfs root {
         if it.dir.total_size <= 100000
             sum += it.dir.total_size;
     }
 
-    print_tree(root);
     print("part1: %\n", sum);
+}
+
+part_2 :: (root: *Node) {
+    dir_sizes: [..]s64;
+    for :tree_dfs root {
+        array_add(*dir_sizes, it.dir.total_size);
+    }
+
+    needed_size := 30000000 - (70000000 - root.dir.total_size);
+    sorted := quick_sort(dir_sizes, (x,y)=>x-y);
+    for sorted {
+        if it >= needed_size {
+            print("part2: %\n", it);
+            break;
+        }
+    }
 }
 
 
@@ -181,5 +196,9 @@ main :: () {
     filename := "../input.txt";
     file_contents := file_read_all(filename);
 
-    part_1(file_contents);
+    filesystem_root := construct_tree_from_log_string(file_contents);
+    print_tree(filesystem_root);
+
+    part_1(filesystem_root);
+    part_2(filesystem_root);
 }
