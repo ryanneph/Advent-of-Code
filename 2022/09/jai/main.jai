@@ -58,6 +58,19 @@ sign :: inline (val: s64) -> s64 {
     else             return -1;
 }
 
+simulate_head :: (head: *Vector2s, move: Move) {
+    if move.dir == {
+        case .Right;
+            head.x += 1;
+        case .Left;
+            head.x -= 1;
+        case .Up;
+            head.y += 1;
+        case .Down;
+            head.y -= 1;
+    }
+}
+
 simulate_tail :: (head: Vector2s, tail: *Vector2s) {
     diff, adiff: Vector2s;
     diff.x = head.x - tail.x;
@@ -74,25 +87,14 @@ simulate_tail :: (head: Vector2s, tail: *Vector2s) {
 }
 
 part_1 :: (moves: []Move) {
-    head := Vector2s.{0, 0};
-    tail := head;
+    head, tail: Vector2s;
     visited: Table(Vector2s, bool, given_hash_function = get_hash, given_compare_function = (a, b) => a==b);
 
     for moves {
         move := it;
         print("Move: %\n", move);
         while move.count > 0 {
-            if move.dir == {
-                case .Right;
-                    head.x += 1;
-                case .Left;
-                    head.x -= 1;
-                case .Up;
-                    head.y += 1;
-                case .Down;
-                    head.y -= 1;
-            }
-
+            simulate_head(*head, move);
             simulate_tail(head, *tail);
             move.count -= 1;
 
@@ -106,10 +108,35 @@ part_1 :: (moves: []Move) {
     print("part1: %\n", visited.count);
 }
 
+part_2 :: (moves: []Move) {
+    knots: [10]Vector2s;
+    head := *knots[0];
+    visited: Table(Vector2s, bool, given_hash_function = get_hash, given_compare_function = (a, b) => a==b);
+
+    for moves {
+        move := it;
+        print("Move: %\n", move);
+        while move.count > 0 {
+            simulate_head(head, move);
+            print("  HEAD at %\n", <<head);
+            for i: 1..knots.count-1 {
+                simulate_tail(knots[i-1], *knots[i]);
+                print("  KNOT[%] at %\n", i, knots[i]);
+            }
+            table_set(*visited, knots[9], true);
+
+            move.count -= 1;
+        }
+    }
+
+    print("part2: %\n", visited.count);
+}
+
 main :: () {
     filename := "../input.txt";
     file_contents := file_read_all(filename);
     moves := parse_moves(file_contents);
 
     part_1(moves);
+    part_2(moves);
 }
