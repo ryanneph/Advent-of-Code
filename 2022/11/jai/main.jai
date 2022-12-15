@@ -35,6 +35,23 @@ Monkey :: struct {
     inspect_count: s64;
 }
 
+deep_copy :: (monkeys: [..]Monkey) -> [..]Monkey {
+    new: [..]Monkey;
+    for monkeys {
+
+        new_items: [..]s64;
+        for item: it.items
+            array_add(*new_items, item);
+
+        new_monkey := it;
+        new_monkey.items = new_items;
+
+        array_add(*new, new_monkey);
+    }
+
+    return new;
+}
+
 apply_op :: (item: s64, op: Op) -> s64 {
     arg := ifx op.value_type == .Self then item else op.value;
 
@@ -42,22 +59,23 @@ apply_op :: (item: s64, op: Op) -> s64 {
     if op.type == .Add  new += arg;
     else                new *= arg;
 
-    return new / 3;
+    return new;
 }
 
-part_1 :: (monkeys: [..]Monkey) {
+simulate :: (monkeys: [..]Monkey, num_rounds: s64, divisor: s64, modulo: s64 = -1) ->s64 {
     round := 0;
-    while round < 20 {
+    while round < num_rounds {
         round += 1;
-        print("ROUND %\n", round);
+        // print("ROUND %\n", round);
 
         for *monkey: monkeys {
-            print("  MONKEY %\n", it_index);
+            // print("  MONKEY %\n", it_index);
             for monkey.items {
                 item := it;
-                print("    Inspecting item %\n", item);
-                item = apply_op(item, monkey.op);
-                print("    item is now %\n", item);
+                // print("    Inspecting item %\n", item);
+                item = apply_op(item, monkey.op) / divisor;
+                if (modulo > 0) item %= modulo;
+                // print("    item is now %\n", item);
 
                 dest_monkey := ifx item % monkey.test_divisor == 0
                                then *monkeys[monkey.true_dest]
@@ -68,14 +86,26 @@ part_1 :: (monkeys: [..]Monkey) {
             array_reset_keeping_memory(*monkey.items);
         }
 
-        for monkeys {
-            print("%: % %\n", it_index, it.items, it.inspect_count);
-        }
-        print("\n");
+        // for monkeys {
+        //     print("%: % %\n", it_index, it.items, it.inspect_count);
+        // }
+        // print("\n");
     }
 
     quick_sort(monkeys, it=>-it.inspect_count);
-    print("part_1: %\n", monkeys[0].inspect_count * monkeys[1].inspect_count);
+    return monkeys[0].inspect_count * monkeys[1].inspect_count;
+}
+
+part_1 :: (monkeys: [..]Monkey) {
+    print("part_1: %\n", simulate(monkeys, 20, 3, -1));
+}
+
+part_2 :: (monkeys: [..]Monkey) {
+    worry_control := 1;
+    for monkeys
+        worry_control *= it.test_divisor;
+
+    print("part_2: %\n", simulate(monkeys, 10000, 1, worry_control));
 }
 
 parse_monkeys :: (contents: string) -> [..]Monkey {
@@ -136,5 +166,7 @@ main :: () {
     file_contents := file_read_all_as_string(filename);
     monkeys := parse_monkeys(file_contents);
 
-    part_1(monkeys);
+    monkeys_copy := deep_copy(monkeys);
+    part_1(monkeys_copy);
+    part_2(monkeys);
 }
