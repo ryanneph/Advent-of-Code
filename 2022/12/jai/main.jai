@@ -13,12 +13,6 @@ Vec2s :: struct { x, y: s64; }
 operator == :: (a: Vec2s, b: Vec2s) -> bool {
     return a.x == b.x && a.y == b.y;
 }
-get_hash :: (v: Vec2s) -> u32 {
-    arr: [2]s64;
-    arr[0] = v.x;
-    arr[1] = v.y;
-    return get_hash(arr);
-}
 
 Map :: struct {
     depth: [..]s64;
@@ -76,12 +70,6 @@ parse_map :: (contents: File_Contents) -> Map {
 
     return map;
 }
-
-// Path :: struct {
-//     min_length: s64;
-//     location: Vec2s;
-//     visited: bool;
-// }
 
 get_index :: inline (map: *Map, x: s64, y: s64) -> s64 {
     index := y * map.width + x;
@@ -141,11 +129,7 @@ pop_min_length :: (locations: *[..]Location) -> Location {
     return min_location;
 }
 
-part_1 :: (map: *Map) {
-    start_location: Location;
-    start_location.position = map.begin;
-    start_location.distance = 0;
-
+find_min_distance :: (map: *Map, start_location: Location) -> s64 {
     visited_locations: [..]Location;
     array_add(*visited_locations, start_location);
 
@@ -157,11 +141,12 @@ part_1 :: (map: *Map) {
     }
     array_free(neighbors);
 
+    min_distance := INFINITE_DISTANCE;
     while candidates {
         current := pop_min_length(*candidates);
 
         if current.position == map.end {
-            print("part_1: %\n", current.distance);
+            min_distance = current.distance;
             break;
         }
 
@@ -186,6 +171,38 @@ part_1 :: (map: *Map) {
         }
         array_free(neighbors);
     }
+
+    return min_distance;
+}
+
+part_1 :: (map: *Map) {
+    start_location: Location;
+    start_location.position = map.begin;
+    start_location.distance = 0;
+
+    print("part_1: %\n", find_min_distance(map, start_location));
+}
+
+part_2 :: (map: *Map) {
+    min_distance := INFINITE_DISTANCE;
+    for row: 0..map.height-1 {
+        for col: 0..map.width-1 {
+            if map.depth[get_index(map, col, row)] != 0
+                continue;
+
+            start_location: Location;
+            start_location.position.x = col;
+            start_location.position.y = row;
+            start_location.distance = 0;
+
+            distance := find_min_distance(map, start_location);
+            if distance < min_distance
+                min_distance = distance;
+        }
+    }
+
+    assert(min_distance < INFINITE_DISTANCE);
+    print("part_2: %\n", min_distance);
 }
 
 main :: () {
@@ -194,4 +211,5 @@ main :: () {
     map := parse_map(file_contents);
 
     part_1(*map);
+    part_2(*map);
 }
