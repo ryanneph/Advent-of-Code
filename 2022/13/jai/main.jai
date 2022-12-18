@@ -1,6 +1,7 @@
 // Compile with "jai -import_dir '<AoC-repo-dir>/jai-common' main.jai"
 
 #import "Basic";
+#import "Sort";
 #import "String";
 
 // from ../../../jai-common
@@ -179,10 +180,54 @@ part_1 :: (packets: [..]Input) {
     print("part_1: %\n", sum);
 }
 
+part_2 :: (packets: [..]Input) {
+    make_divider :: (integer: s64) -> Input {
+        value: Input;
+        value.type = .Integer;
+        value.integer = integer;
+
+        inner: Input;
+        inner.type = .List;
+        array_add(*inner.list, value);
+
+        divider: Input;
+        divider.type = .List;
+        array_add(*divider.list, inner);
+        divider.original = "DIVIDER";
+
+        return divider;
+    }
+
+    divider1 := make_divider(2);
+    divider2 := make_divider(6);
+    array_add(*packets, divider1);
+    array_add(*packets, divider2);
+
+    compare_for_sort :: (l: Input, r: Input) -> s64 {
+        result := compare_inputs(l, r);
+        if result == {
+            case .Correct;      return -1;
+            case .Incorrect;    return 1;
+            case .Undetermined; return 0;
+        }
+    }
+    quick_sort(packets, compare_for_sort);
+
+    decoder_key := 1;
+    for packets {
+        print("%\n", it.original);
+        if it.original == "DIVIDER"
+            decoder_key *= (it_index + 1);
+    }
+
+    print("part_2: %\n", decoder_key);
+}
+
 main :: () {
     filename := "../input.txt";
     file_contents := file_read_all(filename);
     packets := parse_packets(file_contents);
 
     part_1(packets);
+    part_2(packets);
 }
