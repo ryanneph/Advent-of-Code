@@ -89,7 +89,29 @@ print_grid :: (grid: Grid) {
     print("\n");
 }
 
-generate_grid :: (paths: [..]Path) -> Grid {
+generate_rocks_for_path :: (grid: *Grid, path: Path) {
+    for i: 1..path.count-1 {
+        first := path[i-1];
+        last  := path[i];
+
+        // ensure first comes before last
+        temp := first;
+        first.x = min(temp.x, last.x);
+        first.y = min(temp.y, last.y);
+        last.x  = max(temp.x, last.x);
+        last.y  = max(temp.y, last.y);
+
+        for row: first.y..last.y {
+            for col: first.x..last.x {
+                valid, index := get_index_offset(grid, col, row);
+                assert(valid);
+                grid.data[index] = .Rock;
+            }
+        }
+    }
+}
+
+generate_grid :: (paths: [..]Path, with_floor: bool = false) -> Grid {
     min_coord, max_coord: Vec2s;
     min_coord.x = 9999;
     min_coord.y = 9999;
@@ -110,6 +132,14 @@ generate_grid :: (paths: [..]Path) -> Grid {
     max_coord.x = max(max_coord.x, sand_source.x);
     max_coord.y = max(max_coord.y, sand_source.y);
 
+    if with_floor {
+        // make the floor twice as wide as the initial grid
+        floor_half_width := (max_coord.x - min_coord.x + 1) * 4;
+        min_coord.x -= floor_half_width;
+        max_coord.x += floor_half_width;
+        max_coord.y += 2;
+    }
+
     grid: Grid;
     grid.sand_source = sand_source;
     grid.start = min_coord;
@@ -117,33 +147,20 @@ generate_grid :: (paths: [..]Path) -> Grid {
     grid.height = max_coord.y - min_coord.y + 1;
     array_resize(*grid.data, grid.width * grid.height);
 
-    for path: paths {
-        for i: 1..path.count-1 {
-            first := path[i-1];
-            last  := path[i];
+    for path: paths
+        generate_rocks_for_path(*grid, path);
 
-            // ensure first comes before last
-            temp := first;
-            first.x = min(temp.x, last.x);
-            first.y = min(temp.y, last.y);
-            last.x  = max(temp.x, last.x);
-            last.y  = max(temp.y, last.y);
-
-            for row: first.y..last.y {
-                for col: first.x..last.x {
-                    valid, index := get_index_offset(grid, col, row);
-                    assert(valid);
-                    grid.data[index] = .Rock;
-                }
-            }
-
-        }
+    if with_floor {
+        floor: Path;
+        array_add(*floor, Vec2s.{min_coord.x, max_coord.y});
+        array_add(*floor, Vec2s.{max_coord.x, max_coord.y});
+        generate_rocks_for_path(*grid, floor);
     }
 
     return grid;
 }
 
-simulate_one_sand :: (grid: Grid) -> bool {
+simulate_one_sand :: (grid: Grid) -> (at_rest: bool, rest_at: Vec2s) {
     sand: Vec2s;
     sand.x = grid.sand_source.x;
     sand.y = grid.sand_source.y;
@@ -157,7 +174,7 @@ simulate_one_sand :: (grid: Grid) -> bool {
             next.y = sand.y + delta.y;
 
             valid, next_index := get_index_offset(grid, next.x, next.y);
-            if !valid  return false; // fell into the abyss
+            if !valid  return false, .{}; // fell into the abyss
 
             if grid.data[next_index] != .Air  continue;
 
@@ -171,11 +188,11 @@ simulate_one_sand :: (grid: Grid) -> bool {
     assert(valid);
     grid.data[rest_index] = .Sand;
 
-    return true;
+    return true, sand;
 }
 
 part_1 :: (paths: [..]Path) {
-    grid := generate_grid(paths);
+    grid := generate_grid(paths, with_floor = false);
 
     total_sand := 0;
     iteration := 0;
@@ -197,10 +214,38 @@ part_1 :: (paths: [..]Path) {
     print("part_1: %\n", total_sand);
 }
 
+part_2 :: (paths: [..]Path) {
+    grid := generate_grid(paths, with_floor = true);
+
+    total_sand := 0;
+    iteration := 0;
+    while true {
+        iteration += 1;
+        // print("\nITERATION %\n", iteration);
+        // print("==============\n");
+
+        keep_going, rest_at := simulate_one_sand(grid);
+        total_sand += cast(s64)keep_going;
+
+        // print_grid(grid);
+        // sleep_milliseconds(20);
+
+        // reaching the abyss in part2 means our floor isn't wide enough...
+        if !keep_going print_grid(grid);
+        assert(keep_going);
+
+        if rest_at == grid.sand_source  break;
+    }
+
+    print_grid(grid);
+    print("part_2: %\n", total_sand);
+}
+
 main :: () {
     filename := "../input.txt";
     file_contents := file_read_all(filename);
     paths := parse_paths(file_contents);
 
     part_1(paths);
+    part_2(paths);
 }
