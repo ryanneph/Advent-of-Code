@@ -1,5 +1,15 @@
 #import "Basic";
 
+// for_expansion for iterating characters of a string
+chars :: (line: *string, body: Code, flags: For_Flags) #expand {
+    for i: 0..line.count-1 {
+        `it_index := i;
+        `it := (<<line)[i];
+
+        #insert body;
+    }
+}
+
 string_next_line :: (str: string) -> (string, string) {
    if (!str.count) return ("", "");
 
@@ -19,7 +29,7 @@ string_next_line :: (str: string) -> (string, string) {
       out_string.data = str.data + len + 1;
       out_string.count = str.count - len - 1;
    }
-   
+
    return (line, out_string);
 }
 

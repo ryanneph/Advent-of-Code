@@ -8,16 +8,6 @@
 #import "file";
 #import "string";
 
-// for_expansion for iterating characters of a string
-chars :: (line: *string, body: Code, flags: For_Flags) #expand {
-    for i: 0..line.count-1 {
-        `it_index := i;
-        `it := (<<line)[i];
-
-        #insert body;
-    }
-}
-
 get_priority :: (char: s64) -> s64 {
     if (char < #char "a") {
         assert(char >= #char "A" && char <= #char "Z");
