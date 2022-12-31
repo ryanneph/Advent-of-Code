@@ -131,37 +131,46 @@ Chamber :: struct {
     falling: Landed_Rock;
 }
 
-does_collide_with_rock :: (chamber: Chamber, new_position: Vec2s) -> bool {
+does_collide_with_any_rock :: (chamber: Chamber, new_position: Vec2s) -> bool {
     using,only(falling) chamber;
 
-    if new_position.y < 1
+    // hits floor
+    if new_position.y <= 0
         return true;
 
-    rock := falling.rock;
-    for <landed_rock: chamber.landed {
-        for <y: landed_rock.position.y + landed_rock.rock.height - 1 .. landed_rock.position.y {
-            for x: min(landed_rock.position.x, new_position.x)
-                .. max(landed_rock.position.x + landed_rock.rock.width, new_position.x + falling.rock.width)
-            {
-                debug("  (collision) testing (%, %): ", x, y);
+    // landed rocks are sorted by height of top edge (position.y + rock.height - 1), so we can stop after we find a
+    // landed rock with top edge lower than the falling rock's lower edge.
+    for <landed: chamber.landed {
+        // already tested all possible collisions (the rest are lower)
+        if new_position.y > landed.position.y + landed.rock.height - 1 {
+            debug("  (collision) early stop at landed rock % of % (rest are too low)\n",
+                it_index + 1, chamber.landed.count);
+            break;
+        }
+
+        bbox_min, bbox_max: Vec2s;
+        bbox_min.x = max(new_position.x, landed.position.x);
+        bbox_min.y = max(new_position.y, landed.position.y);
+        bbox_max.x = min(new_position.x + falling.rock.width  - 1, landed.position.x + landed.rock.width - 1);
+        bbox_max.y = min(new_position.y + falling.rock.height - 1, landed.position.y + landed.rock.height - 1);
+
+        // no bounding box collision
+        if bbox_min.x > bbox_max.x || bbox_min.y > bbox_max.y {
+            debug("  (collision) no bounding box collision between falling and landed %\n", it_index + 1);
+            continue;
+        }
+
+        debug("  (collision) testing % cells in overlap box (%, %) -> (%, %):\n",
+            (bbox_max.x - bbox_min.x + 1) * (bbox_max.y - bbox_min.y + 1),
+            bbox_min.x, bbox_min.y, bbox_max.x, bbox_max.y);
+
+        for <y: bbox_max.y .. bbox_min.y {
+            for x: bbox_min.x .. bbox_max.x {
+                debug("    - testing (%, %): ", x, y);
                 defer debug("\n");
 
-                if x < landed_rock.position.x || y < landed_rock.position.y
-                    || x >= landed_rock.position.x + landed_rock.rock.width || y >= landed_rock.position.y + landed_rock.rock.height
-                {
-                    debug("not in landed rock data");
-                    continue;
-                }
-
-                if x < new_position.x || y < new_position.y
-                    || x >= new_position.x + rock.width || y >= new_position.y + rock.height
-                {
-                    debug("not in falling rock data");
-                    continue;
-                }
-
-                landed_cell  := landed_rock.rock.data[y - landed_rock.position.y][x - landed_rock.position.x];
-                falling_cell :=             rock.data[y -         new_position.y][x -         new_position.x];
+                landed_cell  :=  landed.rock.data[y - landed.position.y][x - landed.position.x];
+                falling_cell := falling.rock.data[y -    new_position.y][x -    new_position.x];
                 debug("[landed=%, falling=%]", landed_cell, falling_cell);
 
                 if landed_cell && falling_cell {
@@ -183,14 +192,12 @@ shift_sideways :: (chamber: *Chamber, jet: u8) {
     new_position.x = chamber.falling.position.x + shift;
     new_position.y = chamber.falling.position.y;
 
-
     debug("  ");
     debug_character(jet);
 
     if new_position.x >= 0 && new_position.x + chamber.falling.rock.width - 1 < chamber.width
-        && !does_collide_with_rock(chamber, new_position) {
+        && !does_collide_with_any_rock(chamber, new_position) {
         chamber.falling.position = new_position;
-
 
         debug(": shifted to %\n", new_position);
     } else {
@@ -203,9 +210,7 @@ fall_one_unit :: (chamber: *Chamber) -> (landed: bool) {
     new_position.x = chamber.falling.position.x;
     new_position.y = chamber.falling.position.y - 1;
 
-
-    collides := does_collide_with_rock(chamber, new_position);
-
+    collides := does_collide_with_any_rock(chamber, new_position);
 
     debug("  f: ");
     if !collides {
@@ -219,7 +224,24 @@ fall_one_unit :: (chamber: *Chamber) -> (landed: bool) {
     return collides;
 }
 
-part_1 :: (contents: string) {
+array_add_sorted :: (array: *[..]$T, item: T, compare_func: (a: T, b: T) -> s64 ) {
+    insert_index := array.count;
+    for <<array {
+        if compare_func(item, it) < 0 {
+            insert_index = it_index;
+            break;
+        }
+    }
+    array_insert_at(array, item, insert_index);
+}
+
+compare_by_upper_edge_height :: (a: Landed_Rock, b: Landed_Rock) -> s64 {
+    height_a := a.position.y + a.rock.height - 1;
+    height_b := b.position.y + b.rock.height - 1;
+    return height_a - height_b;
+}
+
+part_all :: (contents: string, rock_count: s64) {
     jet_ring: Char_Ring;
     jet_ring.data  = contents.data;
     jet_ring.count = contents.count;
@@ -230,9 +252,10 @@ part_1 :: (contents: string) {
     rock_ring.count = rocks.count;
 
     chamber: Chamber;
-    while chamber.landed.count < 2022 {
+    while chamber.landed.count < rock_count {
         chamber.falling.rock     = get_next_pointer(*rock_ring);
         chamber.falling.position = Vec2s.{ 2, chamber.height + 4 };
+
         print("\nDropping Rock from %:\n", chamber.falling.position);
         debug("%\n", to_string(chamber.falling.rock));
 
@@ -245,18 +268,20 @@ part_1 :: (contents: string) {
                 chamber.height = max(chamber.height, chamber.falling.position.y + chamber.falling.rock.height - 1);
                 print("  rock % landed at %, new chamber height is %\n",
                     chamber.landed.count + 1, chamber.falling.position, chamber.height);
-                array_add(*chamber.landed, Landed_Rock.{ chamber.falling.rock, chamber.falling.position });
+                array_add_sorted(*chamber.landed, Landed_Rock.{ chamber.falling.rock, chamber.falling.position },
+                    compare_by_upper_edge_height);
                 break;
             }
         }
     }
 
-    print("part_1: %\n", chamber.height);
+    print("Height after % landed rocks: %\n", rock_count, chamber.height);
 }
 
 main :: () {
     filename := "../input.txt";
     file_contents := trim_right(file_read_all_as_string(filename), "\n");
 
-    part_1(file_contents);
+    part_all(file_contents, rock_count=2022);
+    // part_all(file_contents, rock_count=1000000000000);
 }
