@@ -8,8 +8,6 @@
 #import "file";
 #import "string";
 
-DEBUG :: true;
-
 Valve :: struct {
     name: string;
     index: s64;
@@ -157,107 +155,205 @@ get_shortest_matrix :: (graph: Graph) -> Square_Matrix {
     return matrix;
 }
 
-Debug_Data :: struct {
-    from_valve, to_valve: *Valve;
-    benefit: s64;
-    time_remaining_before: s64;
-    time_remaining_after: s64;
-}
-
 Sequence :: struct {
     time_remaining: s64;
-    score: s64;
-
-    closed: [..]*Valve;
     current: *Valve;
 
-    #if DEBUG  debug: [..]Debug_Data;
+    done: bool;
 }
 
-make_next_sequence :: (seq: *Sequence, next_valve: *Valve, time_used: s64, benefit: s64) -> Sequence {
+SequenceSet :: struct($N: s64) {
+    score: s64;
     closed: [..]*Valve;
-    for seq.closed {
-        if it != next_valve  array_add(*closed, it);
-    }
 
-    next: Sequence;
-    memcpy(*next, seq, size_of(type_of(next)));
-
-    next.time_remaining = seq.time_remaining - time_used;
-    next.score += benefit;
-    next.closed = closed;
-    next.current = next_valve;
-
-#if DEBUG {
-    debug: [..]Debug_Data;
-    for seq.debug  array_add(*debug, it);
-
-    debug_data: Debug_Data;
-    debug_data.from_valve            = seq.current;
-    debug_data.to_valve              = next_valve;
-    debug_data.benefit               = benefit;
-    debug_data.time_remaining_before = seq.time_remaining;
-    debug_data.time_remaining_after  = seq.time_remaining - time_used;
-    array_add(*debug, debug_data);
-
-    next.debug = debug;
-}
-
-    return next;
+    seqs: [N]Sequence;
 }
 
 part_1 :: (graph: Graph, shortest: Square_Matrix) {
-    seq: Sequence;
+    set: SequenceSet(1);
+    seq := *set.seqs[0];
     seq.time_remaining = 30;
-    seq.current        = graph.first;
+    seq.current = graph.first;
 
     for *valve: graph.valves {
         if valve.flow_rate
-            array_add(*seq.closed, valve);
+            array_add(*set.closed, valve);
     }
 
-    sequences: [..]Sequence;
-    array_add(*sequences, seq);
+    sets: [..]SequenceSet(1);
+    array_add(*sets, set);
 
-    tested_count := 0;
-    best_seq: Sequence;
-    while sequences {
-        seq := pop(*sequences);
+    best_set: SequenceSet(1);
+    while sets {
+        set := pop(*sets);
+        seq := *set.seqs[0];
 
-        if seq.score > best_seq.score
-            best_seq = seq;
+        if set.score > best_set.score
+            best_set = set;
 
-        terminated := true;
-        for next: seq.closed {
-            distance := shortest.data[next.index * shortest.size + seq.current.index];
+        for next_valve: set.closed {
+            distance := shortest.data[next_valve.index * shortest.size + seq.current.index];
 
             // insufficient time to get there and open next
-            if distance + 1 > seq.time_remaining
+            if distance + 1 >= seq.time_remaining
                 continue;
 
-            benefit  := next.flow_rate * (seq.time_remaining - distance - 1);
-            next_seq := make_next_sequence(*seq, next, distance + 1, benefit);
-            array_add(*sequences, next_seq);
+            benefit := next_valve.flow_rate * (seq.time_remaining - distance - 1);
 
-            terminated = false;
+            next_set: SequenceSet(1);
+            next_set.score = set.score + benefit;
+
+            for set.closed {
+                if it != next_valve  array_add(*next_set.closed, it);
+            }
+
+            next_seq := *next_set.seqs[0];
+            next_seq.time_remaining = seq.time_remaining - distance - 1;
+            next_seq.current = next_valve;
+
+            array_add(*sets, next_set);
         }
-
-        if terminated
-            tested_count += 1;
     }
 
-
-#if DEBUG {
-    print("\nDEBUG OUTPUT for best sequence:\n");
-    print("Tried % sequences\n", tested_count);
-    for best_seq.debug {
-        print("  %: % -> % (time_before=%, time_after=%, benefit=%)\n",
-        it_index, it.from_valve.name, it.to_valve.name, it.time_remaining_before,
-        it.time_remaining_after, it.benefit);
-    }
+    print("part_1: %\n", best_set.score);
 }
 
-    print("part_1: %\n", best_seq.score);
+part_2 :: (graph: Graph, shortest: Square_Matrix) {
+    // for each "closed", iterate permutations of each combination, keeping only the most optimal
+    //   for each "optimal" combination, iterate participants, counting number of valid moves for each
+    // If any participant has valid_count == 0, it cannot continue, and should be excluded from further moves
+    // Otherwise, no partial moves are allowed.
+
+
+    set: SequenceSet(2);
+    for *seq: set.seqs {
+        seq.time_remaining = 26;
+        seq.current = graph.first;
+    }
+    for *valve: graph.valves {
+        if valve.flow_rate
+            array_add(*set.closed, valve);
+    }
+
+    sets: [..]SequenceSet(2);
+    array_add(*sets, set);
+
+    best_set: SequenceSet(2);
+    while sets {
+        set := pop(*sets);
+
+        if set.score > best_set.score
+            best_set = set;
+
+        Permutation :: [2]s64;
+        make_permutation :: (x: s64, y: s64) -> Permutation {
+            perm: Permutation;
+            perm[0] = x;
+            perm[1] = y;
+            return perm;
+        }
+
+        Move_Result :: struct {
+            distance:       s64;
+            score:          s64;
+            time_remaining: s64;
+        };
+
+        get_move_result :: (seq: Sequence, next_valve: *Valve, shortest: Square_Matrix) -> (valid: bool #must, result: Move_Result) {
+            using result: Move_Result;
+
+            distance = shortest.data[next_valve.index * shortest.size + seq.current.index];
+            if distance + 1 >= seq.time_remaining
+                return false, .{};
+
+            score += next_valve.flow_rate * (seq.time_remaining - distance - 1);
+            time_remaining = seq.time_remaining - distance - 1;
+
+            return true, result;
+        };
+
+        // if a sequence is "done", all other sequences may continue making moves alone
+        next_set: SequenceSet(2);
+        for seq: set.seqs {
+            next_seq := *next_set.seqs[it_index];
+            <<next_seq = seq;
+            next_seq.done = true;
+
+            for next_valve: set.closed {
+                valid, _ := get_move_result(seq, next_valve, shortest);
+                if valid {
+                    next_seq.done = false;
+                    break;
+                }
+            }
+        }
+
+        for next_seq: next_set.seqs {
+            if next_seq.done  continue;
+            print("%: %, (is_done: %)\n", next_seq, to_string(next_seq.current), next_seq.done);
+        }
+
+        #if 0 {
+        // a new set for each unique pair of closed valves
+        for k: 0 .. set.closed.count-1 {
+            for j: k+1 .. set.closed.count-1 {
+                assert(k != j);
+
+                next_set_1: SequenceSet(2);
+                next_set_1.seqs[0].current = set.closed[k];
+                next_set_1.seqs[1].current = set.closed[j];
+
+                for *next_seq: next_set_1.seqs {
+                    seq := set.seqs[it_index];
+                    next_valve := next_seq.current;
+
+                    distance := shortest.data[next_valve.index * shortest.size + seq.current.index];
+                    if distance + 1 >= seq.time_remaining {
+                        next_seq.current = seq.current;
+                        continue;
+                    }
+
+                    next_set_1.score += next_valve.flow_rate * (seq.time_remaining - distance - 1);
+                    next_seq.time_remaining = seq.time_remaining - distance - 1;
+                }
+
+                next_set_2: SequenceSet(2);
+                next_set_2.seqs[0].current = set.closed[j];
+                next_set_2.seqs[1].current = set.closed[k];
+
+                for *next_seq: next_set_2.seqs {
+                    seq := set.seqs[it_index];
+                    next_valve := next_seq.current;
+
+                    distance := shortest.data[next_valve.index * shortest.size + seq.current.index];
+                    if distance + 1 >= seq.time_remaining {
+                        next_seq.current = seq.current;
+                        continue;
+                    }
+
+                    next_set_2.score += next_valve.flow_rate * (seq.time_remaining - distance - 1);
+                    next_seq.time_remaining = seq.time_remaining - distance - 1;
+                }
+
+                next_set: SequenceSet(2);
+                if !next_set_1.score && !next_set_2.score  continue;
+
+                next_set = ifx next_set_1.score > next_set_2.score then next_set_1 else next_set_2;
+                next_set.score += set.score;
+
+                for set.closed {
+                    if it != next_set.seqs[0].current && it != next_set.seqs[1].current {
+                        array_add(*next_set.closed, it);
+                    }
+                }
+
+                array_add(*sets, next_set);
+            }
+        }
+        } // #if
+    }
+
+    print("part_2: %\n", best_set.score);
 }
 
 main :: () {
@@ -268,4 +364,5 @@ main :: () {
     // print_shortest_matrix(shortest, graph);
 
     part_1(graph, shortest);
+    part_2(graph, shortest);
 }
