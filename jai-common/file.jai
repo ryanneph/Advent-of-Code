@@ -1,8 +1,7 @@
 #import "Basic";
 #import "File";
 
-// from jai-common/
-#import "string";
+#import,file "./string.jai";
 
 file_read_all_as_string :: (filename: string) -> (string, bool) {
    file, success := file_open(filename, for_writing=false, keep_existing_content=true);

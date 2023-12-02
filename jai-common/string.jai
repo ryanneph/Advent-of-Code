@@ -2,9 +2,17 @@
 
 // for_expansion for iterating characters of a string
 chars :: (line: *string, body: Code, flags: For_Flags) #expand {
-    for i: 0..line.count-1 {
+    reverse := flags & .REVERSE;
+    start  := ifx !reverse then 0         else line.count-1;
+    end    := ifx !reverse then line.count else -1;
+    update := ifx !reverse then 1          else -1;
+
+    i := start;
+    while i != end {
+        defer i += update;
+
         `it_index := i;
-        `it := (<<line)[i];
+        `it := line.*[i];
 
         #insert body;
     }
