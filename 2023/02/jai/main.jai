@@ -79,7 +79,7 @@ get_color :: (name: string) -> Color {
     }
 }
 
-update_max_cube_count :: (game: *Game, count: s64, color: Color) {
+update_cube_stats :: (game: *Game, count: s64, color: Color) {
     index := cast(s64)color;
     if index >= game.max_counts.count {
         print("Error: tried to add % to color at index %, but index must be < %",
@@ -123,7 +123,7 @@ parse :: (file_contents: File_Contents) -> Results {
                  color := get_color(strip_left(rest, " "));
                  if color == .INVALID  return_error("failed to parse color");
 
-                 update_max_cube_count(*game, count, color);
+                 update_cube_stats(*game, count, color);
                  debug("    count: % of %\n", count, color);
              }
         }
@@ -148,6 +148,19 @@ part_1 :: (results: *Results) {
     print("Part1: %\n", id_sum);
 }
 
+part_2 :: (results: *Results) {
+    power_sum := 0;
+    for game: results.games {
+        power_sum += (
+            game.max_counts[cast(s64)Color.RED] *
+            game.max_counts[cast(s64)Color.GREEN] *
+            game.max_counts[cast(s64)Color.BLUE]
+        );
+
+    }
+    print("Part2: %\n", power_sum);
+}
+
 main :: () {
     filename := "../input.txt";
 
@@ -159,4 +172,5 @@ main :: () {
     }
 
     part_1(*results);
+    part_2(*results);
 }
