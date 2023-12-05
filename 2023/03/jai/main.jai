@@ -14,6 +14,8 @@ debug_character :: inline (char: u8) {
 
 Part :: struct {
     x, y: s64;
+    label_count: s64;
+    label_product: s64 = 1;
 }
 
 Label :: struct {
@@ -32,6 +34,7 @@ Schematic :: struct {
     labels: [..]Label;
     parts: [..]Part;
     id_sum: s64;
+    gear_ratio_sum: s64;
 }
 
 remove_chars_in_place :: (s: *string, chars: string) -> found_count: s64 {
@@ -158,10 +161,20 @@ parse :: (file_contents: string) -> Schematic {
                 label.x, label.y, label.value,
                 ifx label.assign_count>0 then " (already counted)" else "");
 
-            if !label.assign_count {
-                id_sum += label.value;
-            }
+            part.label_count += 1;
+            part.label_product *= label.value;
+
+            assert(!label.assign_count);
+            id_sum += label.value;
             label.assign_count += 1;
+        }
+    }
+
+    gear_ratio_sum = 0;
+    for *part: parts {
+        if part.label_count >= 2 {
+            assert(part.label_count == 2);
+            gear_ratio_sum += part.label_product;
         }
     }
 
@@ -171,6 +184,10 @@ parse :: (file_contents: string) -> Schematic {
 
 part_1 :: (schematic: Schematic) {
     print("Part1: %\n", schematic.id_sum);
+}
+
+part_2 :: (schematic: Schematic) {
+    print("Part2: %\n", schematic.gear_ratio_sum);
 }
 
 main :: () {
@@ -185,4 +202,5 @@ main :: () {
 
     schematic := parse(file_contents);
     part_1(schematic);
+    part_2(schematic);
 }
