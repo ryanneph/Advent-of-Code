@@ -46,12 +46,15 @@ for_expansion :: (contents: File_Contents, body: Code, flags: For_Flags) #expand
     }
 }
 
-file_read_all :: (filename: string) -> File_Contents {
+file_read_all :: (filename: string) -> (File_Contents, success: bool) {
     string_contents, success := file_read_all_as_string(filename);
-    assert(success);
+    if !success {
+        print("Failed to read file '%s'", filename);
+        return .{}, false;
+    }
 
     contents: File_Contents;
     contents.string_contents = string_contents;
 
-    return contents;
+    return contents, true;
 }
